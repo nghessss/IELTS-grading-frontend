@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import type React from "react"
+import { useState, useEffect } from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,7 +11,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import dynamic from "next/dynamic"
 
-// Import components with dynamic import to prevent SSR issues
 const HtmlContentDisplay = dynamic(() => import("@/components/html-content-display"), { ssr: false })
 const WordUsageAnalysis = dynamic(() => import("@/components/word-usage-analysis"), { ssr: false })
 
@@ -30,7 +30,7 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
     initialFeedbackData,
     initialWordUsageData,
     initialDetailedAnalysisHtml,
-    isReadOnly
+    isReadOnly,
   } = props
 
   const [text, setText] = useState("")
@@ -44,30 +44,20 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
     lexicalResource: 6,
     grammaticalRange: 6,
   })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [feedbackData, setFeedbackData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [detailedAnalysisHtml, setDetailedAnalysisHTML] = useState<string>("")
-  // Add a new state
   const [wordUsageData, setWordUsageData] = useState(null)
 
-  // Use mock data for testing
-  const [usingMockData, setUsingMockData] = useState(false)
+  const countWords = (s: string) => s.trim().split(/\s+/).filter(Boolean).length
 
-  // Count the number of words in a string
-  const countWords = (s: string) =>
-    s.trim().split(/\s+/).filter(Boolean).length
+  const MAX_QUESTION_WORDS = 60
+  const MAX_ESSAY_WORDS = 360
 
-  const MAX_QUESTION_WORDS = 60  // maximum words for question
-  const MAX_ESSAY_WORDS    = 360 // maximum words for essay
-
-  // Handle user input for the question textarea
-  // - Limit to MAX_QUESTION_WORDS words
-  // - Trim excess words if pasted or typed over the limit
   const handleQuestionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const raw = e.target.value
-    const n   = countWords(raw)
+    const n = countWords(raw)
     if (n <= MAX_QUESTION_WORDS) {
       setQuestion(raw)
       setQuestionWordCount(n)
@@ -77,192 +67,79 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
       setQuestionWordCount(MAX_QUESTION_WORDS)
     }
   }
-  
-  // Prevent whitespace keydown if word count is already MAX_QUESTION_WORDS
+
   const handleQuestionKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (/\s/.test(e.key) && countWords(question) >= MAX_QUESTION_WORDS) {
       e.preventDefault()
     }
   }
-  
-  // Handle paste event for the question textarea
-  // - Limit to MAX_QUESTION_WORDS words
-  // - Trim excess words if pasted over the limit
+
   const handleQuestionPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const pasteText    = e.clipboardData.getData("text")
+    const pasteText = e.clipboardData.getData("text")
     const currentCount = countWords(question)
-    const pasteCount   = countWords(pasteText)
-    const available    = MAX_QUESTION_WORDS - currentCount
-  
+    const pasteCount = countWords(pasteText)
+    const available = MAX_QUESTION_WORDS - currentCount
+
     if (available <= 0) {
       e.preventDefault()
       return
     }
     if (currentCount + pasteCount <= MAX_QUESTION_WORDS) return
-  
+
     e.preventDefault()
     const head = pasteText.trim().split(/\s+/).slice(0, available).join(" ")
-    const sep  = question.length > 0 && !/\s$/.test(question) ? " " : ""
+    const sep = question.length > 0 && !/\s$/.test(question) ? " " : ""
     const newQ = question + sep + head
     setQuestion(newQ)
     setQuestionWordCount(MAX_QUESTION_WORDS)
   }
 
-  // Prevent whitespace keydown if word count is already MAX_ESSAY_WORDS
   const handleEssayChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const raw = e.target.value
-    const n   = countWords(raw)
+    const n = countWords(raw)
     if (n <= MAX_ESSAY_WORDS) {
       setText(raw)
       setEssayWordCount(n)
     } else {
-      // Trim excess words if pasted or typed over the limit
-      const trimmed = raw
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, MAX_ESSAY_WORDS)
-        .join(" ")
+      const trimmed = raw.trim().split(/\s+/).filter(Boolean).slice(0, MAX_ESSAY_WORDS).join(" ")
       setText(trimmed)
       setEssayWordCount(MAX_ESSAY_WORDS)
     }
-  }  
+  }
 
-  // Prevent whitespace keydown if word count is already MAX_ESSAY_WORDS
   const handleEssayKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // whitespace
     if (/\s/.test(e.key) && countWords(text) >= MAX_ESSAY_WORDS) {
       e.preventDefault()
     }
   }
 
-  // Handle paste event for the essay textarea
-  // - Limit to MAX_ESSAY_WORDS words
-  // - Trim excess words if pasted over the limit
   const handleEssayPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const pasteText    = e.clipboardData.getData("text")
+    const pasteText = e.clipboardData.getData("text")
     const currentCount = countWords(text)
-    const pasteCount   = countWords(pasteText)
-    const available    = MAX_ESSAY_WORDS - currentCount
-  
+    const pasteCount = countWords(pasteText)
+    const available = MAX_ESSAY_WORDS - currentCount
+
     if (available <= 0) {
       e.preventDefault()
       return
     }
     if (currentCount + pasteCount <= MAX_ESSAY_WORDS) return
-  
+
     e.preventDefault()
     const head = pasteText.trim().split(/\s+/).slice(0, available).join(" ")
-    const sep  = text.length > 0 && !/\s$/.test(text) ? " " : ""
+    const sep = text.length > 0 && !/\s$/.test(text) ? " " : ""
     const newText = text + sep + head
     setText(newText)
     setEssayWordCount(MAX_ESSAY_WORDS)
   }
 
-  const generateMockData = () => {
-    // Create mock feedback data
-    const mockFeedback = {
-      overall: 6.5,
-      task_response: {
-        score: 6,
-        evaluation_feedback: [
-          "You have addressed the main aspects of the task.",
-          "Your position is clear but could be more fully developed.",
-        ],
-        constructive_feedback: {
-          strengths: [
-            "You have a clear introduction that presents the topic.",
-            "You have included relevant examples to support your points.",
-          ],
-          areas_for_improvement: [
-            "Try to address all parts of the prompt more equally.",
-            "Develop your conclusion more fully to summarize your arguments.",
-          ],
-          recommendations: [
-            "Include a clearer thesis statement in your introduction.",
-            "Make sure to fully address all parts of the prompt.",
-          ],
-        },
-      },
-      coherence_and_cohesion: {
-        score: 7,
-        evaluation_feedback: [
-          "Your essay has a clear overall progression.",
-          "You use cohesive devices effectively in most cases.",
-        ],
-        constructive_feedback: {
-          strengths: [
-            "Your paragraphs have clear central topics.",
-            "You use a range of cohesive devices appropriately.",
-          ],
-          areas_for_improvement: [
-            "Some paragraphs could be better connected to improve flow.",
-            "Avoid overusing certain linking words.",
-          ],
-          recommendations: [
-            "Use a wider variety of cohesive devices.",
-            "Ensure each paragraph has a clear topic sentence.",
-          ],
-        },
-      },
-      lexical_resource: {
-        score: 6,
-        evaluation_feedback: [
-          "You use an adequate range of vocabulary for the task.",
-          "There are some errors in word choice and collocation.",
-        ],
-        constructive_feedback: {
-          strengths: [
-            "You attempt to use some less common vocabulary items.",
-            "Your vocabulary is generally relevant to the topic.",
-          ],
-          areas_for_improvement: [
-            "Work on using more precise vocabulary.",
-            "Reduce errors in word form and collocation.",
-          ],
-          recommendations: [
-            "Learn synonyms for commonly used words.",
-            "Practice using academic vocabulary in context.",
-          ],
-        },
-      },
-      grammatical_range_and_accuracy: {
-        score: 7,
-        evaluation_feedback: [
-          "You use a mix of simple and complex sentence structures.",
-          "There are some errors in grammar but they rarely impede communication.",
-        ],
-        constructive_feedback: {
-          strengths: ["You use a variety of complex structures.", "Most of your sentences are error-free."],
-          areas_for_improvement: [
-            "Pay attention to subject-verb agreement in complex sentences.",
-            "Be careful with article usage.",
-          ],
-          recommendations: [
-            "Practice using a wider range of complex structures.",
-            "Review common grammar errors in your writing.",
-          ],
-        },
-      },
-    }
-
-    // Update state with mock data
-    setScores({
-      taskAchievement: mockFeedback.task_response.score,
-      coherenceCohesion: mockFeedback.coherence_and_cohesion.score,
-      lexicalResource: mockFeedback.lexical_resource.score,
-      grammaticalRange: mockFeedback.grammatical_range_and_accuracy.score,
-    })
-    setFeedbackData(mockFeedback)
-  }
-
   useEffect(() => {
     if (isReadOnly) {
-      setQuestion(initialQuestion || '')
-      setText(initialEssay || '')
+      setQuestion(initialQuestion || "")
+      setText(initialEssay || "")
       setFeedbackData(initialFeedbackData)
       setWordUsageData(initialWordUsageData)
-      setDetailedAnalysisHTML(initialDetailedAnalysisHtml || '')
+      setDetailedAnalysisHTML(initialDetailedAnalysisHtml || "")
       setIsGraded(true)
     }
   }, [
@@ -271,22 +148,14 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
     initialEssay,
     initialFeedbackData,
     initialWordUsageData,
-    initialDetailedAnalysisHtml
+    initialDetailedAnalysisHtml,
   ])
-
-  useEffect(() => {
-    if (isGraded || usingMockData || isReadOnly) return
-    setUsingMockData(true)
-    generateMockData()
-  }, [isGraded, usingMockData, isReadOnly])
 
   const handleGrade = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      console.log("Question:", question)
-      console.log("Essay:", text)
       const response = await fetch("/api/grade-essay", {
         method: "POST",
         headers: {
@@ -307,13 +176,10 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
           throw new Error(`Server error: ${response.status} ${response.statusText}`)
         }
       }
-      
-      const data = await response.json()
-      console.log("Response data:", data)
-      const { formattedResponse, statistics, annotatedEssay } = data
-      
 
-      console.log("Grading result:", data)
+      const data = await response.json()
+      const { formattedResponse, statistics, annotatedEssay } = data
+
       setScores({
         taskAchievement: formattedResponse.task_response.score,
         coherenceCohesion: formattedResponse.coherence_and_cohesion.score,
@@ -323,7 +189,7 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
       setFeedbackData(formattedResponse)
       setIsGraded(true)
       setWordUsageData(statistics)
-      setDetailedAnalysisHTML( annotatedEssay )
+      setDetailedAnalysisHTML(annotatedEssay)
     } catch (error) {
       console.error("Error grading essay:", error)
       setError(error instanceof Error ? error.message : "Failed to grade your essay. Please try again.")
@@ -347,32 +213,15 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
       lexicalResource: 6,
       grammaticalRange: 6,
     })
-    setUsingMockData(false)
   }
 
   const getOverallBand = () => {
     return feedbackData.overall?.toFixed(1)
   }
 
-  // Get feedback for a specific criterion and feedback type
   const getFeedback = (criterion: string, type: "strengths" | "evaluation" | "areas_for_improvement"): string[] => {
     if (!feedbackData) {
-      // Return mock data if no feedback data is available
-      const mockFeedback = {
-        strengths: [
-          "You have addressed the main aspects of the task.",
-          "Your essay has a clear structure with introduction, body paragraphs, and conclusion.",
-        ],
-        evaluation: [
-          "Your response demonstrates a good understanding of the topic.",
-          "You have used some cohesive devices effectively.",
-        ],
-        areas_for_improvement: [
-          "Try to develop your ideas with more specific examples.",
-          "Work on using a wider range of vocabulary.",
-        ],
-      }
-      return mockFeedback[type]
+      return ["No feedback available"]
     }
 
     const map: Record<string, any> = {
@@ -399,7 +248,6 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
 
     return ["Feedback not available"]
   }
-
 
   const getCriteriaLabel = (criteria: string) => {
     switch (criteria) {
@@ -428,7 +276,6 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* Task 2 Question/Prompt */}
               <div>
                 <label htmlFor="question" className="block text-sm font-medium mb-2">
                   Task 2 Question/Prompt
@@ -438,7 +285,6 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
                   placeholder="Enter the IELTS Task 2 question or prompt here..."
                   className="min-h-[100px]"
                   value={question}
-                  // onChange={(e) => setQuestion(e.target.value)}
                   onChange={handleQuestionChange}
                   onKeyDown={handleQuestionKeyDown}
                   onPaste={handleQuestionPaste}
@@ -449,7 +295,6 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
                 </div>
               </div>
 
-              {/* Essay Response */}
               <div>
                 <label htmlFor="essay" className="block text-sm font-medium mb-2">
                   Your Essay Response
@@ -459,7 +304,6 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
                   placeholder="Write your IELTS Writing Task 2 response here..."
                   className="min-h-[200px]"
                   value={text}
-                  // onChange={(e) => setText(e.target.value)}
                   onChange={handleEssayChange}
                   onKeyDown={handleEssayKeyDown}
                   onPaste={handleEssayPaste}
@@ -523,20 +367,17 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="detailed-analysis" className="mt-4">
-            {/* Only render if window is available and detailedAnalysisHtml exists */}
-            {typeof window !== "undefined" && detailedAnalysisHtml && (
-              <HtmlContentDisplay
-                htmlContent={detailedAnalysisHtml}
-                onHtmlUpdate={(updatedHtml: string) => setDetailedAnalysisHTML(updatedHtml)}
-                title="Your essay with suggestions"
-                className="mt-0"
-              />
+              {typeof window !== "undefined" && detailedAnalysisHtml && (
+                <HtmlContentDisplay
+                  htmlContent={detailedAnalysisHtml}
+                  onHtmlUpdate={(updatedHtml: string) => setDetailedAnalysisHTML(updatedHtml)}
+                  title="Your essay with suggestions"
+                  className="mt-0"
+                />
               )}
             </TabsContent>
             <TabsContent value="word-usage" className="mt-4">
-              {typeof window !== "undefined" && wordUsageData && (
-                <WordUsageAnalysis analysis={wordUsageData} />
-              )}
+              {typeof window !== "undefined" && wordUsageData && <WordUsageAnalysis analysis={wordUsageData} />}
             </TabsContent>
           </Tabs>
           <Card>
@@ -570,13 +411,15 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-sm font-medium">Score: {score}</span>
                         <div className="h-2 w-full bg-muted rounded-full overflow-hidden flex-1">
-                          <div className="h-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, ((score - 3) / 6) * 100))}%` }}></div>
+                          <div
+                            className="h-full bg-primary"
+                            style={{ width: `${Math.max(0, Math.min(100, ((score - 3) / 6) * 100))}%` }}
+                          ></div>
                         </div>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Strengths Box */}
                       <div className="border rounded-lg overflow-hidden">
                         <div className="bg-green-100 dark:bg-green-900 p-3 flex items-center gap-2">
                           <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -591,7 +434,6 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
                         </div>
                       </div>
 
-                      {/* Evaluation Box */}
                       <div className="border rounded-lg overflow-hidden">
                         <div className="bg-blue-100 dark:bg-blue-900 p-3 flex items-center gap-2">
                           <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -606,7 +448,6 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
                         </div>
                       </div>
 
-                      {/* Constructive Feedback Box */}
                       <div className="border rounded-lg overflow-hidden">
                         <div className="bg-amber-100 dark:bg-amber-900 p-3 flex items-center gap-2">
                           <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
@@ -628,8 +469,6 @@ export default function IeltsTask2Grader(props: IeltsTask2GraderProps) {
               </div>
             </CardContent>
           </Card>
-
-          
         </div>
       )}
     </div>

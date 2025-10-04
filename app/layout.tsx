@@ -1,4 +1,3 @@
-// app/layout.tsx
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
@@ -16,6 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "IELTS Writing Task 2 Grader",
   description: "Automated essay scoring with history sidebar",
+    generator: 'v0.app'
 }
 
 export default function RootLayout({
